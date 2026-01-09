@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Tree Pro - Search Added</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --male-bg: #e3f2fd; --male-border: #90caf9;
+            --female-bg: #fce4ec; --female-border: #f48fb1;
+            --group-bg: #fff3cd; --group-border: #ffeeba;
+            --line-color: #999;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0; padding: 20px;
+            overflow: auto;
+        }
+
+        /* SVG Layer */
+        #svg-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 0;
+        }
+
+        /* --- SEARCH BOX (NEW) --- */
+        .search-box {
+            position: fixed; top: 20px; left: 20px; z-index: 1001;
+            background: white; padding: 10px; border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            display: flex; gap: 5px; align-items: center;
+        }
+        .search-box input {
+            padding: 8px; border: 1px solid #ccc; border-radius: 4px; outline: none; width: 150px;
+        }
+        .search-btn {
+            background: #007bff; color: white; border: none; padding: 8px 12px;
+            border-radius: 4px; cursor: pointer; font-size: 13px;
+        }
+        .search-btn:hover { background: #0056b3; }
+
+        .toolbar { text-align: center; margin-bottom: 40px; position: relative; z-index: 10; }
+        .btn-main { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; }
+
+        /* Ancestor Info Panel */
+        #info-panel {
+            position: fixed; top: 20px; right: 20px; width: 250px;
+            background: white; border: 2px solid #333; padding: 15px;
+            border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1000; display: none; text-align: left; font-size: 13px;
+            pointer-events: none;
+        }
+        #info-panel h3 { margin-top: 0; border-bottom: 1px solid #ccc; padding-bottom: 5px; font-size: 15px; }
+        .gen-title { font-weight: bold; color: #555; margin-top: 8px; text-transform: uppercase; font-size: 11px; }
+        .gen-content { margin-left: 5px; line-height: 1.4; }
+
+        /* Tree Layout */
+        #forest-container {
+            display: flex; flex-direction: row; justify-content: center;
+            align-items: flex-start; gap: 100px; padding: 50px;
+            position: relative; z-index: 1;
+            min-width: 2000px; min-height: 2000px; /* Ensure scrolling space */
+        }
+
+        .family-wrapper {
+            display: flex; flex-direction: column; align-items: center;
+            transition: margin-top 0.3s ease;
+        }
+
+        .level-controls {
+            display: flex; gap: 5px; margin-bottom: 10px; background: white;
+            padding: 5px 10px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .lvl-btn { cursor: pointer; background: #607d8b; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size:10px; }
+
+        .tree ul { padding-top: 20px; position: relative; display: flex; justify-content: center; margin:0; padding-left:0; }
+        .tree li { float: left; text-align: center; list-style-type: none; position: relative; padding: 20px 5px 0 5px; }
+        
+        .tree li::before, .tree li::after {
+            content: ''; position: absolute; top: 0; right: 50%;
+            border-top: 1px solid var(--line-color); width: 50%; height: 20px;
+        }
+        .tree li::after { right: auto; left: 50%; border-left: 1px solid var(--line-color); }
+        .tree li:only-child::after, .tree li:only-child::before { display: none; }
+        .tree li:only-child { padding-top: 0; }
+        .tree li:first-child::before, .tree li:last-child::after { border: 0 none; }
+        .tree li:last-child::before{ border-right: 1px solid var(--line-color); border-radius: 0 5px 0 0; }
+        .tree li:first-child::after{ border-radius: 5px 0 0 0; }
+        .tree ul ul::before {
+            content: ''; position: absolute; top: 0; left: 50%;
+            border-left: 1px solid var(--line-color); width: 0; height: 20px;
+        }
+
+        /* Card Styling */
+        .card {
+            background: white; border: 1px solid #ccc; padding: 8px;
+            border-radius: 8px; display: inline-flex; flex-direction: column;
+            align-items: center; min-width: 120px; box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+            position: relative; z-index: 2;
+        }
+
+        .family-group-label {
+            background: var(--group-bg); border: 1px solid var(--group-border);
+            color: #856404; padding: 5px 10px; border-radius: 15px;
+            font-size: 11px; font-weight: bold; margin-bottom: 5px;
+            position: relative; z-index: 2; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .partners-row {
+            display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+            flex-wrap: wrap; justify-content: center; max-width: 400px;
+        }
+        
+        .divider { color: #888; font-weight: bold; font-size: 12px; }
+
+        .person {
+            padding: 5px 10px; border-radius: 4px; border: 1px solid transparent;
+            font-weight: 600; font-size: 13px; position: relative; cursor: pointer;
+            display: flex; align-items: center; gap: 5px;
+            transition: all 0.3s ease;
+        }
+        .male { background: var(--male-bg); border-color: var(--male-border); }
+        .female { background: var(--female-bg); border-color: var(--female-border); }
+        
+        .person:hover { border: 1px solid #666; transform: scale(1.05); z-index: 10; }
+
+        /* Highlights */
+        .person.highlight-main {
+            background-color: #ffd700 !important;
+            border-color: #ff8c00 !important;
+            box-shadow: 0 0 12px rgba(255, 140, 0, 0.6);
+            transform: scale(1.1); z-index: 20;
+        }
+        .person.highlight-ancestor {
+            background-color: #fff176 !important;
+            border-color: #fbc02d !important;
+            box-shadow: 0 0 8px rgba(251, 192, 45, 0.5);
+        }
+        path.highlight-path {
+            stroke: #ff5722 !important;
+            stroke-width: 4px !important;
+            filter: drop-shadow(0 0 3px rgba(255,87,34, 0.5));
+            z-index: 10;
+        }
+
+        .action-icon { font-size: 10px; cursor: pointer; opacity: 0.6; transition: 0.2s; }
+        .action-icon:hover { opacity: 1; transform: scale(1.2); }
+        .edit-icon { color: #555; }
+        .delete-icon { color: #dc3545; margin-left: 3px; }
+
+        .btn-row { display: flex; gap: 4px; }
+        .btn-sm { font-size: 10px; padding: 3px 6px; cursor: pointer; color: white; border: none; border-radius: 3px; }
+        .btn-child { background: #007bff; }
+        .btn-spouse { background: #e83e8c; }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index: 2000; justify-content:center; align-items:center; }
+        .modal-content { background:white; padding:20px; border-radius:8px; width:280px; display:flex; flex-direction:column; gap:10px;}
+        input, select { padding: 8px; width: 100%; box-sizing: border-box; }
+        .modal-label { font-size: 12px; font-weight: bold; color: #666; margin-bottom: -5px; }
+
+    </style>
+</head>
+<body>
+
+    <svg id="svg-layer"></svg>
+
+    <!-- SEARCH BOX -->
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search name..." onkeypress="handleEnter(event)">
+        <button class="search-btn" onclick="searchTree()">Search</button>
+    </div>
+
+    <div id="info-panel">
+        <h3>Ancestry Details</h3>
+        <div id="ancestor-content"></div>
+    </div>
+
+    <div class="toolbar">
+        <h1>Family Tree Pro</h1>
+        <button class="btn-main" onclick="openModal('new_root', null)">+ Start New Family Tree</button>
+    </div>
+
+    <div id="forest-container"></div>
+
+    <!-- MODAL -->
+    <div class="modal" id="dataModal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Add Member</h3>
+            <div class="modal-label">Name</div>
+            <input type="text" id="mName" placeholder="Full Name">
+            <div class="modal-label">Gender</div>
+            <select id="mGender">
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+            </select>
+            
+            <div id="parentSelectContainer" style="display:none;">
+                <div class="modal-label">Select Mother/Other Parent</div>
+                <select id="mOtherParent">
+                    <option value="">Unknown / None</option>
+                </select>
+            </div>
+
+            <div id="editMotherContainer" style="display:none;">
+                <div class="modal-label">Change Mother</div>
+                <select id="mEditMother">
+                    <option value="">Unknown / None</option>
+                </select>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:10px;">
+                <button class="btn-sm" style="background:#888" onclick="closeModal()">Cancel</button>
+                <button class="btn-sm btn-child" onclick="saveData()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let db = [
+            { id: 1, name: "Abraham", gender: "male", spouseIds: [2, 3], fatherId: null, motherId: null },
+            { id: 2, name: "Sarah", gender: "female", spouseIds: [1], fatherId: null, motherId: null },
+            { id: 3, name: "Hagar", gender: "female", spouseIds: [1], fatherId: null, motherId: null }
+        ];
+        let nextId = 4;
+        let treeOffsets = {}; 
+        let action = { mode: '', targetId: null };
+
+        // --- SEARCH FUNCTIONALITY ---
+        function handleEnter(e) {
+            if(e.key === 'Enter') searchTree();
+        }
+
+        function searchTree() {
+            const input = document.getElementById('searchInput');
+            const term = input.value.trim().toLowerCase();
+            if(!term) return;
+
+            // Find first partial match
+            const found = db.find(p => p.name.toLowerCase().includes(term));
+            
+            if(found) {
+                // Find DOM element
+                const card = document.querySelector(`.person[data-id="${found.id}"]`);
+                if(card) {
+                    // Scroll into view
+                    card.scrollIntoView({behavior: "smooth", block: "center", inline: "center"});
+                    
+                    // Visual feedback: Add highlight class
+                    card.classList.add('highlight-main');
+                    
+                    // Remove highlight after 2 seconds
+                    setTimeout(() => {
+                        card.classList.remove('highlight-main');
+                    }, 2000);
+                }
+            } else {
+                alert("Person not found!");
+            }
+        }
+
+        // --- RENDER ---
+        function render() {
+            const container = document.getElementById('forest-container');
+            container.innerHTML = '';
+            
+            let visualRoots = db.filter(p => {
+                if (p.fatherId || p.motherId) return false; 
+                if (p.spouseIds && p.spouseIds.length > 0) {
+                    for (let sId of p.spouseIds) {
+                        let spouse = db.find(x => x.id === sId);
+                        if (spouse && (spouse.fatherId || spouse.motherId)) return false; 
+                    }
+                    const spouse = db.find(x => x.id === p.spouseIds[0]);
+                    if(spouse && !spouse.fatherId && !spouse.motherId) {
+                         if (p.gender === 'female' && spouse.gender === 'male') return false;
+                         if (p.gender === spouse.gender && p.id > spouse.id) return false;
+                    }
+                }
+                return true;
+            });
+
+            visualRoots.forEach(root => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'family-wrapper';
+                wrapper.style.marginTop = (treeOffsets[root.id] || 0) + 'px';
+
+                const ctrl = document.createElement('div');
+                ctrl.className = 'level-controls';
+                ctrl.innerHTML = `<button class="lvl-btn" onclick="moveTree(${root.id}, -30)">▲</button><span>Level</span><button class="lvl-btn" onclick="moveTree(${root.id}, 30)">▼</button>`;
+                wrapper.appendChild(ctrl);
+
+                const treeDiv = document.createElement('div');
+                treeDiv.className = 'tree';
+                const ul = document.createElement('ul');
+                let visited = new Set();
+                ul.appendChild(buildNode(root, visited));
+                
+                treeDiv.appendChild(ul);
+                wrapper.appendChild(treeDiv);
+                container.appendChild(wrapper);
+            });
+            setTimeout(drawLines, 50);
+        }
+
+        function buildNode(person, visited) {
+            visited.add(person.id);
+            const li = document.createElement('li');
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            const row = document.createElement('div');
+            row.className = 'partners-row';
+            row.appendChild(createBadge(person)); 
+
+            if (person.spouseIds) {
+                person.spouseIds.forEach(sId => {
+                    const spouse = db.find(s => s.id === sId);
+                    if (spouse) {
+                        const span = document.createElement('span');
+                        span.className = 'divider'; span.innerText = "+";
+                        row.appendChild(span);
+                        row.appendChild(createBadge(spouse));
+                        if (!spouse.fatherId && !spouse.motherId) visited.add(spouse.id);
+                    }
+                });
+            }
+            card.appendChild(row);
+
+            const btnRow = document.createElement('div');
+            btnRow.className = 'btn-row';
+            const btnChild = document.createElement('button');
+            btnChild.className = 'btn-sm btn-child';
+            btnChild.innerText = '+ Child';
+            btnChild.onclick = () => openModal('child', person.id);
+            btnRow.appendChild(btnChild);
+            const btnSpouse = document.createElement('button');
+            btnSpouse.className = 'btn-sm btn-spouse';
+            btnSpouse.innerText = '+ Spouse';
+            btnSpouse.onclick = () => openModal('spouse', person.id);
+            btnRow.appendChild(btnSpouse);
+            card.appendChild(btnRow);
+            li.appendChild(card);
+
+            const children = db.filter(c => {
+                if (person.gender === 'male') return c.fatherId === person.id;
+                else return c.motherId === person.id && !c.fatherId;
+            });
+
+            let groups = {};
+            children.forEach(child => {
+                let key = 'Unknown';
+                if (person.gender === 'male' && child.motherId) key = child.motherId;
+                else if (person.gender === 'female' && child.fatherId) key = child.fatherId;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(child);
+            });
+
+            if (Object.keys(groups).length > 0) {
+                const ul = document.createElement('ul');
+                const hasMultipleGroups = Object.keys(groups).length > 1;
+
+                if (hasMultipleGroups) {
+                    for (const [parentId, kids] of Object.entries(groups)) {
+                        const groupLi = document.createElement('li');
+                        let labelText = parentId !== 'Unknown' ? `With ${db.find(x=>x.id==parentId)?.name || 'Unknown'}` : "Other Children";
+                        
+                        const groupLabel = document.createElement('div');
+                        groupLabel.className = 'family-group-label';
+                        groupLabel.innerText = labelText;
+                        groupLi.appendChild(groupLabel);
+
+                        const groupUl = document.createElement('ul');
+                        kids.forEach(child => {
+                            if (!visited.has(child.id)) groupUl.appendChild(buildNode(child, visited));
+                        });
+                        groupLi.appendChild(groupUl);
+                        ul.appendChild(groupLi);
+                    }
+                    li.appendChild(ul);
+                } else {
+                    let hasKids = false;
+                    children.forEach(child => {
+                        if (!visited.has(child.id)) {
+                            ul.appendChild(buildNode(child, visited));
+                            hasKids = true;
+                        }
+                    });
+                    if(hasKids) li.appendChild(ul);
+                }
+            }
+            return li;
+        }
+
+        function createBadge(p) {
+            const div = document.createElement('div');
+            div.className = `person ${p.gender}`;
+            div.setAttribute('data-id', p.id);
+            div.setAttribute('onmouseenter', `handleMouseEnter(event, ${p.id})`);
+            div.setAttribute('onmouseleave', `handleMouseLeave()`);
+            div.innerHTML = `
+                ${p.name}
+                <span class="action-icon edit-icon" onclick="openModal('edit', ${p.id}); event.stopPropagation();">✎</span>
+                <span class="action-icon delete-icon" onclick="deleteMember(${p.id}); event.stopPropagation();">✖</span>
+            `;
+            return div;
+        }
+
+        // --- HIGHLIGHT & HOVER ---
+        function handleMouseEnter(e, id) { showAncestors(e, id); highlightAncestors(id); }
+        function handleMouseLeave() { hideAncestors(); clearHighlights(); }
+
+        function showAncestors(e, id) {
+            const p = db.find(x => x.id === id);
+            if(!p) return;
+            const panel = document.getElementById('info-panel');
+            const content = document.getElementById('ancestor-content');
+            
+            const getNm = (pid) => {
+                if(!pid) return "<span style='color:#ccc'>Unknown</span>";
+                const person = db.find(x => x.id === pid);
+                return person ? person.name : "<span style='color:#ccc'>Unknown</span>";
+            };
+
+            let html = `<strong>${p.name}</strong><hr style='margin:5px 0'>`;
+            html += `<div class='gen-title'>Parents</div>`;
+            html += `<div class='gen-content'>Father: ${getNm(p.fatherId)}<br>Mother: ${getNm(p.motherId)}</div>`;
+            const f = db.find(x => x.id === p.fatherId);
+            const m = db.find(x => x.id === p.motherId);
+            if (f || m) {
+                html += `<div class='gen-title'>Grandparents</div>`;
+                html += `<div class='gen-content'>`;
+                if(f) html += `Paternal: ${getNm(f.fatherId)} & ${getNm(f.motherId)}<br>`;
+                if(m) html += `Maternal: ${getNm(m.fatherId)} & ${getNm(m.motherId)}`;
+                html += `</div>`;
+            }
+            content.innerHTML = html;
+            panel.style.display = 'block';
+        }
+        function hideAncestors() { document.getElementById('info-panel').style.display = 'none'; }
+
+        function highlightAncestors(id) {
+            let ancestors = new Set();
+            const recurse = (currId) => {
+                if (!currId) return;
+                const p = db.find(x => x.id === currId);
+                if (!p) return;
+                ancestors.add(currId);
+                if (p.fatherId) recurse(p.fatherId);
+                if (p.motherId) recurse(p.motherId);
+            };
+            recurse(id);
+            document.querySelectorAll('.person').forEach(card => {
+                const cardId = parseInt(card.getAttribute('data-id'));
+                if (cardId === id) card.classList.add('highlight-main');
+                else if (ancestors.has(cardId)) card.classList.add('highlight-ancestor');
+            });
+            document.querySelectorAll('path').forEach(path => {
+                const p1 = parseInt(path.getAttribute('data-p1'));
+                const p2 = parseInt(path.getAttribute('data-p2'));
+                if ((ancestors.has(p1) || p1 === id) && (ancestors.has(p2) || p2 === id)) {
+                    path.classList.add('highlight-path');
+                }
+            });
+        }
+        function clearHighlights() {
+            document.querySelectorAll('.person').forEach(c => c.classList.remove('highlight-main', 'highlight-ancestor'));
+            document.querySelectorAll('path').forEach(p => p.classList.remove('highlight-path'));
+        }
+
+        // --- CRUD ---
+        function deleteMember(id) {
+            if(!confirm("Delete this person?")) return;
+            const person = db.find(p => p.id === id);
+            if (person && person.spouseIds) {
+                person.spouseIds.forEach(sId => {
+                    const spouse = db.find(s => s.id === sId);
+                    if(spouse) spouse.spouseIds = spouse.spouseIds.filter(x => x !== id);
+                });
+            }
+            db.forEach(child => {
+                if (child.fatherId === id) child.fatherId = null;
+                if (child.motherId === id) child.motherId = null;
+            });
+            db = db.filter(p => p.id !== id);
+            render();
+            handleMouseLeave();
+        }
+
+        function openModal(mode, id) {
+            action = { mode, targetId: id };
+            const mName = document.getElementById('mName');
+            const mGender = document.getElementById('mGender');
+            const pCont = document.getElementById('parentSelectContainer');
+            const pSel = document.getElementById('mOtherParent');
+            const editMCont = document.getElementById('editMotherContainer');
+            const editMSel = document.getElementById('mEditMother');
+            
+            mName.value = ""; mGender.value = "male"; 
+            pCont.style.display = 'none';
+            editMCont.style.display = 'none';
+
+            let title = "Add Member";
+
+            if (mode === 'edit') {
+                const p = db.find(x => x.id === id);
+                mName.value = p.name; mGender.value = p.gender;
+                title = "Edit Details";
+                if (p.fatherId) {
+                    const father = db.find(x => x.id === p.fatherId);
+                    if (father && father.spouseIds && father.spouseIds.length > 0) {
+                        editMCont.style.display = 'block';
+                        editMSel.innerHTML = '<option value="">Unknown / None</option>';
+                        father.spouseIds.forEach(sId => {
+                            const s = db.find(x => x.id === sId);
+                            if(s) {
+                                const opt = document.createElement('option');
+                                opt.value = s.id; opt.innerText = s.name;
+                                if (p.motherId === s.id) opt.selected = true;
+                                editMSel.appendChild(opt);
+                            }
+                        });
+                    }
+                }
+            }
+            else if (mode === 'new_root') title = "Start New Family Tree";
+            else if (mode === 'spouse') title = "Add Spouse";
+            else if (mode === 'child') {
+                title = "Add Child";
+                const p = db.find(x => x.id === id);
+                pSel.innerHTML = '<option value="">Unknown / None</option>';
+                if (p.spouseIds && p.spouseIds.length > 0) {
+                    p.spouseIds.forEach(sId => {
+                        const s = db.find(x => x.id === sId);
+                        if(s) {
+                            const opt = document.createElement('option');
+                            opt.value = s.id; opt.innerText = s.name;
+                            pSel.appendChild(opt);
+                        }
+                    });
+                    if (p.spouseIds.length > 0) pCont.style.display = 'block';
+                }
+            }
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('dataModal').style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('dataModal').style.display = 'none'; }
+
+        function saveData() {
+            const name = document.getElementById('mName').value.trim();
+            const gender = document.getElementById('mGender').value;
+            if(!name) return;
+
+            const { mode, targetId } = action;
+
+            if (mode === 'edit') {
+                const p = db.find(x => x.id === targetId);
+                p.name = name; p.gender = gender;
+                const editMCont = document.getElementById('editMotherContainer');
+                if (editMCont.style.display !== 'none') {
+                    const newMomId = document.getElementById('mEditMother').value;
+                    p.motherId = newMomId ? parseInt(newMomId) : null;
+                }
+            }
+            else if (mode === 'new_root') {
+                db.push({ id: nextId++, name, gender, spouseIds: [], fatherId: null, motherId: null });
+            }
+            else if (mode === 'child') {
+                const p1 = db.find(x => x.id === targetId);
+                const otherPid = document.getElementById('mOtherParent').value;
+                let fid=null, mid=null;
+                if (p1.gender === 'male') fid = p1.id; else mid = p1.id;
+
+                if (otherPid) {
+                    if (p1.gender === 'male') mid = parseInt(otherPid); else fid = parseInt(otherPid);
+                } else if (p1.spouseIds.length === 1) {
+                    const s = db.find(x => x.id === p1.spouseIds[0]);
+                    if (s) { if (p1.gender === 'male') mid = s.id; else fid = s.id; }
+                }
+                db.push({ id: nextId++, name, gender, spouseIds: [], fatherId: fid, motherId: mid });
+            }
+            else if (mode === 'spouse') {
+                const me = db.find(x => x.id === targetId);
+                const existing = db.find(x => x.name.toLowerCase() === name.toLowerCase() && x.id !== me.id);
+                if (existing) {
+                    if (confirm(`Link with existing "${existing.name}"?`)) {
+                        if (!me.spouseIds.includes(existing.id)) me.spouseIds.push(existing.id);
+                        if (!existing.spouseIds.includes(me.id)) existing.spouseIds.push(me.id);
+                    } else {
+                        const nid = nextId++;
+                        db.push({ id: nid, name, gender, spouseIds: [me.id], fatherId: null, motherId: null });
+                        me.spouseIds.push(nid);
+                    }
+                } else {
+                    const nid = nextId++;
+                    db.push({ id: nid, name, gender, spouseIds: [me.id], fatherId: null, motherId: null });
+                    me.spouseIds.push(nid);
+                }
+            }
+            closeModal();
+            render();
+        }
+
+        function moveTree(id, val) { treeOffsets[id] = (treeOffsets[id] || 0) + val; render(); }
+
+        function drawLines() {
+            const svg = document.getElementById('svg-layer');
+            const container = document.getElementById('forest-container');
+            svg.innerHTML = '';
+            svg.style.width = Math.max(container.scrollWidth, window.innerWidth) + 'px';
+            svg.style.height = Math.max(container.scrollHeight, window.innerHeight) + 'px';
+
+            const badges = Array.from(document.querySelectorAll('.person'));
+            let map = {};
+            badges.forEach(el => { const id = el.getAttribute('data-id'); if(!map[id]) map[id]=[]; map[id].push(el); });
+
+            let drawnConnections = new Set();
+
+            db.forEach(p => {
+                if(p.spouseIds && p.spouseIds.length > 0) {
+                    p.spouseIds.forEach(sId => {
+                        const pEls = map[p.id] || [];
+                        const sEls = map[sId] || [];
+
+                        pEls.forEach(el1 => {
+                            sEls.forEach(el2 => {
+                                const w1 = el1.closest('.family-wrapper');
+                                const w2 = el2.closest('.family-wrapper');
+
+                                if(w1 && w2 && w1 !== w2) {
+                                    const tree1Idx = Array.from(container.children).indexOf(w1);
+                                    const tree2Idx = Array.from(container.children).indexOf(w2);
+                                    const linkKey = [tree1Idx, tree2Idx].sort().join('_') + `__${p.id}`;
+                                    const reverseKey = [tree1Idx, tree2Idx].sort().join('_') + `__${sId}`;
+
+                                    if (!drawnConnections.has(linkKey) && !drawnConnections.has(reverseKey)) {
+                                        drawCurve(svg, el1, el2, p.id, sId); 
+                                        drawnConnections.add(linkKey);
+                                        drawnConnections.add(reverseKey);
+                                    }
+                                }
+                            });
+                        });
+                    });
+                }
+            });
+        }
+
+        function drawCurve(svg, el1, el2, id1, id2) {
+            const r1 = el1.getBoundingClientRect();
+            const r2 = el2.getBoundingClientRect();
+            const sx = window.scrollX; const sy = window.scrollY;
+            const x1 = r1.left + r1.width/2 + sx; const y1 = r1.top + r1.height/2 + sy;
+            const x2 = r2.left + r2.width/2 + sx; const y2 = r2.top + r2.height/2 + sy;
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            const cpY = Math.min(y1, y2) - 60; 
+            const cx = (x1 + x2) / 2;
+            path.setAttribute("d", `M ${x1} ${y1} Q ${cx} ${cpY} ${x2} ${y2}`);
+            path.setAttribute("stroke", "#e83e8c");
+            path.setAttribute("stroke-width", "2");
+            path.setAttribute("fill", "none");
+            path.setAttribute("data-p1", id1);
+            path.setAttribute("data-p2", id2);
+            svg.appendChild(path);
+        }
+
+        window.onresize = drawLines;
+        render();
+    </script>
+</body>
+</html>
