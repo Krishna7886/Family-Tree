@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biblical Family Tree (Corrected Layout)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body data-theme="light">
+    <!-- Connector Lines Layer (For Spouses) -->
+    <svg id="svg-layer"></svg>
+    <!-- Top UI -->
+    <div class="top-ui">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search (Adam, Jesus)..." onkeypress="handleEnter(event)">
+            <button onclick="searchTree()">🔍</button>
+        </div>
+        <div class="toggles">
+            <button class="btn-toggle" onclick="toggleLanguage()">Language: <span
+                    id="lang-display">English</span></button>
+            <button class="btn-toggle" onclick="toggleTheme()">🌗 Theme</button>
+        </div>
+    </div>
+    <!-- Title Bar -->
+    <div class="toolbar">
+        <h1 id="app-title">Biblical Family Tree</h1>
+        <button class="btn-add" onclick="openModal('new_root', null)">+ Add Root</button>
+    </div>
+    <!-- Bottom Controls -->
+    <div class="nav-dock">
+        <div class="zoom-controls">
+            <button onclick="changeZoom(0.1)">+</button>
+            <span id="zoom-level">100%</span>
+            <button onclick="changeZoom(-0.1)">-</button>
+            <button onclick="resetZoom()">Reset</button>
+        </div>
+        <div class="jump-links">
+            <button onclick="goToId(1)">Adam</button>
+            <button onclick="goToId(13)">Noah</button>
+            <button onclick="goToId(25)">Abraham</button>
+            <button onclick="goToId(500)">Jesus</button>
+        </div>
+    </div>
+    <!-- MAIN SCROLLABLE CANVAS -->
+    <div id="forest-container">
+        <!-- The tree actually builds inside here -->
+        <div id="tree-content"></div>
+    </div>
+    <!-- Info Panel -->
+    <div id="info-panel">
+        <button class="close-panel" onclick="hideAncestors()">×</button>
+        <h3 id="panel-name">Details</h3>
+        <div id="ancestor-content">Hover over a person.</div>
+    </div>
+    <!-- Modal -->
+    <div class="modal" id="dataModal">
+        <div class="modal-content">
+            <h3>Edit / Add</h3>
+            <label>Name (English)</label><input type="text" id="mName">
+            <label>Name (Telugu)</label><input type="text" id="mNameTe">
+            <label>Gender</label>
+            <select id="mGender">
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+            </select>
+            <label>Bio</label><textarea id="mBio" rows="3"></textarea>
+            <div id="parentSelectContainer" style="display:none">
+                <label>Mother:</label><select id="mOtherParent"></select>
+            </div>
+            <div class="modal-btns">
+                <button onclick="closeModal()">Cancel</button>
+                <button class="btn-save" onclick="saveData()">Save</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
