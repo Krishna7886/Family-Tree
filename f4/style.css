@@ -1,0 +1,538 @@
+
+
+/* ==================== 1. VARIABLES & THEMES ==================== */
+:root {
+    /* Default Light Mode */
+    --bg-color: #f4f7f6;
+    --text-color: #333;
+    --card-bg: #ffffff;
+    --card-border: #ccc;
+    --line-color: #999;
+    
+    --male-bg: #e3f2fd; 
+    --male-border: #2196f3;
+    
+    --female-bg: #fce4ec; 
+    --female-border: #e91e63;
+    
+    --group-bg: #fff9c4; 
+    --group-border: #fbc02d;
+    
+    --panel-bg: rgba(255, 255, 255, 0.95);
+    --btn-primary: #28a745;
+    --highlight-color: #ffd700;
+}
+.btn-add{
+    background-color: #ebc9c9;
+    border: none;
+    border-radius: 20px;
+    margin-top: 10px;
+    font-size: 20px;
+
+}
+[data-theme="dark"] {
+    /* Dark Mode Overrides */
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --card-bg: #1e1e1e;
+    --card-border: #444;
+    --line-color: #555;
+    
+    --male-bg: #1a237e; 
+    --male-border: #536dfe;
+    
+    --female-bg: #311b92; 
+    --female-border: #ff4081;
+    
+    --group-bg: #4a4a00; 
+    --group-border: #ffd600;
+    
+    --panel-bg: rgba(30, 30, 30, 0.95);
+    --btn-primary: #00e676;
+}
+
+/* ==================== 2. GLOBAL RESET & LAYOUT ==================== */
+body {
+    font-family: 'Segoe UI', 'Mandali', 'Ramabhadra', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Hide body scroll, we scroll the container */
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* SVG Layer for connecting lines */
+#svg-layer {
+    position: absolute; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%;
+    pointer-events: none; 
+    z-index: 0;
+}
+
+/* ----------------------------------------------------------- */
+/* 3. INFINITE CANVAS & ZOOM */
+/* ----------------------------------------------------------- */
+#forest-container {
+    width: 100vw;
+    height: 100vh;
+    overflow: auto; /* Scrollbars appear here */
+    position: relative;
+    cursor: grab;
+}
+
+/* The actual wrapper that gets Scaled/Zoomed */
+#tree-content {
+    /* Large fixed size to allow infinite panning feel */
+    min-width: 8000px;
+    min-height: 5000px;
+    
+    padding: 100px 3000px; /* Start padding to center Adam initially */
+    
+    transform-origin: 50% 100px; /* Zoom from top center */
+    transition: transform 0.2s ease-out;
+    
+    display: inline-flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+/* ==================== 4. TREE HIERARCHY (STRUCTURE) ==================== */
+.tree {
+    display: flex;
+    justify-content: center;
+}
+
+.tree ul {
+    padding-top: 20px; 
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+.tree li {
+    float: left; text-align: center;
+    list-style-type: none;
+    position: relative;
+    padding: 20px 5px 0 5px;
+}
+
+/* --- CONNECTING LINES (CSS) --- */
+/* Horizontal Line above children */
+.tree li::before, .tree li::after {
+    content: '';
+    position: absolute; top: 0; right: 50%;
+    border-top: 2px solid var(--line-color);
+    width: 50%; height: 20px;
+}
+.tree li::after {
+    right: auto; left: 50%;
+    border-left: 2px solid var(--line-color);
+}
+
+/* Remove connectors from root/single nodes */
+.tree li:only-child::after, .tree li:only-child::before { display: none; }
+.tree li:only-child { padding-top: 0; }
+
+/* Remove connectors from first and last nodes to make the curve */
+.tree li:first-child::before, .tree li:last-child::after { border: 0 none; }
+.tree li:last-child::before {
+    border-right: 2px solid var(--line-color);
+    border-radius: 0 5px 0 0;
+}
+.tree li:first-child::after {
+    border-radius: 5px 0 0 0;
+}
+
+/* Vertical line from Parent down to children list */
+.tree ul ul::before {
+    content: '';
+    position: absolute; top: 0; left: 50%;
+    border-left: 2px solid var(--line-color);
+    width: 0; height: 20px;
+}
+
+/* ==================== 5. CARDS & PERSON STYLING ==================== */
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    padding: 10px;
+    border-radius: 8px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 140px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    position: relative;
+    z-index: 2;
+    transition: background 0.3s, border-color 0.3s;
+}
+
+.partners-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.divider { font-weight: bold; font-size: 14px; opacity: 0.6; }
+
+/* The Chip (Person Name) */
+.person {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    position: relative;
+    cursor: pointer;
+    border: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    color: var(--text-color);
+}
+
+/* Gender Colors */
+.person.male { background-color: var(--male-bg); border-color: var(--male-border); }
+.person.female { background-color: var(--female-bg); border-color: var(--female-border); }
+
+/* Icons inside person chip */
+.action-icons {
+    display: flex; gap: 4px;
+    font-size: 10px; opacity: 0.4;
+    transition: opacity 0.2s;
+}
+.person:hover .action-icons { opacity: 1; }
+.action-icon:hover { transform: scale(1.3); }
+
+/* --- HIGHLIGHTING & GLOW EFFECTS --- */
+.person:hover {
+    transform: scale(1.1);
+    z-index: 50;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+.person.highlight {
+    background-color: var(--highlight-color) !important;
+    border-color: #e65100 !important;
+    box-shadow: 0 0 25px var(--highlight-color);
+    transform: scale(1.15);
+    z-index: 100;
+    color: black !important;
+}
+
+/* Buttons inside Card */
+.btn-row { display: flex; gap: 5px; }
+.btn-sm {
+    font-size: 10px;
+    border: none;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: white;
+}
+.btn-child { background: #2196f3; }
+.btn-spouse { background: #e91e63; }
+
+/* Family Group Labels (e.g. "With Hagar") */
+.family-group-label {
+    background: var(--group-bg);
+    border: 1px solid var(--group-border);
+    color: #f57f17;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    display: inline-block;
+}
+
+/* ==================== 6. UI ELEMENTS (FIXED OVERLAYS) ==================== */
+
+/* --- REDESIGNED TOP LEFT DOCK --- */
+.top-ui-dock {
+    position: fixed;
+    top: 20px; 
+    left: 20px;
+    z-index: 2000;
+    
+    /* Modern Glassmorphism Background */
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.1);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.3s ease;
+}
+
+/* Dark Mode support for dock */
+[data-theme="dark"] .top-ui-dock {
+    background: rgba(30, 30, 30, 0.85);
+    border-color: rgba(255,255,255,0.1);
+}
+
+/* Search Wrapper inside Dock */
+.search-wrapper {
+    display: flex;
+    align-items: center;
+    background: var(--bg-color);
+    border-radius: 8px;
+    border: 1px solid transparent;
+    padding: 2px 5px 2px 10px;
+    transition: border 0.3s;
+}
+
+.search-wrapper:focus-within {
+    border-color: var(--male-border);
+    background: var(--card-bg);
+}
+
+.search-wrapper input {
+    border: none;
+    background: transparent;
+    padding: 8px 0;
+    width: 140px;
+    font-size: 13px;
+    color: var(--text-color);
+    outline: none;
+}
+
+.search-wrapper button {
+    background: transparent;
+    border: none;
+    font-size: 14px;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 50%;
+    color: var(--text-color);
+    transition: background 0.2s;
+}
+.search-wrapper button:hover {
+    background: rgba(0,0,0,0.1);
+}
+
+/* Divider Line */
+.divider-vertical {
+    width: 1px;
+    height: 24px;
+    background: var(--line-color);
+    opacity: 0.5;
+}
+
+/* Toggle Group */
+.toggle-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Text Pill Button (Language) */
+.btn-pill {
+    background: var(--male-bg);
+    color: #1565c0;
+    border: 1px solid transparent;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+}
+[data-theme="dark"] .btn-pill {
+    background: #1a237e;
+    color: #90caf9;
+}
+.btn-pill:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+}
+
+/* Icon Circle Button (Theme) */
+.btn-circle {
+    background: var(--text-color);
+    color: var(--bg-color);
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+.btn-circle:hover {
+    transform: rotate(20deg) scale(1.1);
+}
+
+/* --- CENTER TOOLBAR --- */
+.toolbar {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--panel-bg);
+    padding: 10px 40px;
+    border-radius: 0 0 20px 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    z-index: 1000; text-align: center;
+    border: 1px solid #999; border-top: none;
+}
+.toolbar h1 { margin: 0; font-size: 20px; font-weight: 700; color: var(--text-color); }
+.toolbar p { margin: 2px 0 8px; font-size: 11px; color: #666; }
+.btn-main {
+    background: var(--btn-primary); color: white; border: none;
+    padding: 6px 15px; border-radius: 4px; font-weight: bold; cursor: pointer;
+}
+
+/* --- BOTTOM NAV DOCK --- */
+.nav-dock {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: #333;
+    padding: 10px 20px;
+    border-radius: 30px;
+    display: flex; gap: 20px;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.5);
+    z-index: 1000;
+}
+.nav-dock button {
+    background: none; border: none; color: white;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: 0.2s;
+}
+.nav-dock button:hover { color: var(--highlight-color); text-decoration: underline; }
+
+/* --- ZOOM CONTROLS (Bottom Left) --- */
+/* --- ZOOM CONTROLS (Bottom Left) - REDESIGNED --- */
+.zoom-controls {
+    position: fixed; 
+    bottom: 30px; 
+    left: 20px;
+    background: rgba(30, 30, 30, 0.9); /* Slight transparency */
+    backdrop-filter: blur(5px);
+    color: white;
+    display: flex; 
+    flex-direction: column;
+    border-radius: 25px; /* Pill shape */
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    z-index: 2000;
+    width: 50px; /* Fixed wider width */
+    align-items: center;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.zoom-controls button {
+    background: transparent; 
+    color: white; 
+    border: none;
+    width: 100%; 
+    height: 40px; 
+    cursor: pointer; 
+    font-size: 18px; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background 0.2s;
+}
+
+.zoom-controls button:active { background: #555; }
+.zoom-controls button:hover { background: rgba(255,255,255,0.1); }
+
+/* Make the reset button stand out slightly or use an icon */
+#btn-reset { font-size: 14px; font-weight: bold; } 
+
+#zoom-level {
+    font-size: 11px; 
+    padding: 4px 0;
+    width: 100%;
+    text-align: center;
+    background: rgba(0,0,0,0.5);
+    border-top: 1px solid #555; 
+    border-bottom: 1px solid #555;
+    font-family: monospace;
+}
+
+/* --- BOTTOM NAV DOCK (Adjusted to avoid collision) --- */
+.nav-dock {
+    position: fixed; 
+    bottom: 30px; 
+    left: 50%; 
+    transform: translateX(-50%);
+    background: #333;
+    padding: 8px 25px; /* More spacing */
+    border-radius: 40px;
+    display: flex; 
+    gap: 15px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+    z-index: 1000;
+    white-space: nowrap; /* Prevent wrapping */
+}
+
+/* ==================== 7. INFO PANEL & MODALS ==================== */
+
+/* Sidebar Info Panel */
+#info-panel {
+    position: fixed; top: 100px; right: 20px; width: 280px;
+    background: var(--panel-bg);
+    border: 1px solid #999;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    z-index: 3000;
+    display: none;
+    padding: 20px;
+    max-height: 80vh; overflow-y: auto;
+}
+.close-panel {
+    float: right; border: none; background: none; font-size: 20px;
+    color: var(--text-color); cursor: pointer;
+}
+#info-panel h3 { margin-top: 0; color: var(--text-color); border-bottom: 2px solid #ddd; padding-bottom: 5px; }
+#ancestor-content { color: var(--text-color); font-size: 13px; line-height: 1.5; }
+.bio-box {
+    margin-top: 10px;
+    padding: 8px; background: rgba(0,0,0,0.05);
+    border-left: 3px solid #2196f3; font-style: italic;
+}
+
+/* Data Modal */
+.modal {
+    display: none;
+    position: fixed; z-index: 4000; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(3px);
+    justify-content: center; align-items: center;
+}
+.modal-content {
+    background: var(--card-bg);
+    color: var(--text-color);
+    padding: 25px;
+    border-radius: 8px;
+    width: 300px;
+    display: flex; flex-direction: column; gap: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    border: 1px solid var(--line-color);
+}
+.modal-content label { font-size: 12px; font-weight: bold; opacity: 0.7; }
+.modal-content input, .modal-content select, .modal-content textarea {
+    padding: 8px; border-radius: 4px;
+    border: 1px solid #ccc;
+    background: var(--bg-color); color: var(--text-color);
+}
+.modal-actions {
+    display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;
+}
+.btn-save { background: #28a745; color: white; padding: 8px 16px; border:none; border-radius: 4px; cursor: pointer; }
+.btn-cancel { background: #777; color: white; padding: 8px 16px; border:none; border-radius: 4px; cursor: pointer; }
