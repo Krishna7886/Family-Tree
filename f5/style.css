@@ -1,0 +1,240 @@
+/* ==================== 1. VARIABLES & THEMES ==================== */
+:root {
+    /* Light Mode */
+    --bg-color: #f4f7f6;
+    --text-color: #333;
+    --card-bg: #ffffff;
+    --card-border: #ccc;
+    --line-color: #999;
+    
+    --male-bg: #e3f2fd; 
+    --male-border: #2196f3;
+    
+    --female-bg: #fce4ec; 
+    --female-border: #e91e63;
+    
+    --group-bg: #fff9c4; 
+    --group-border: #fbc02d;
+    
+    --panel-bg: rgba(255, 255, 255, 0.95);
+    --btn-primary: #28a745;
+    --highlight: #ffd700;
+}
+
+[data-theme="dark"] {
+    /* Dark Mode */
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --card-bg: #1e1e1e;
+    --card-border: #444;
+    --line-color: #555;
+    
+    --male-bg: #1a237e; 
+    --male-border: #536dfe;
+    
+    --female-bg: #311b92; 
+    --female-border: #ff4081;
+    
+    --group-bg: #4a4a00; 
+    --group-border: #ffd600;
+    
+    --panel-bg: rgba(30, 30, 30, 0.95);
+    --btn-primary: #00e676;
+}
+
+/* ==================== 2. GLOBAL RESET & CANVAS ==================== */
+body {
+    font-family: 'Segoe UI', 'Mandali', sans-serif;
+    margin: 0; padding: 0; 
+    background-color: var(--bg-color); color: var(--text-color);
+    overflow: hidden; /* Hide body scroll, scroll the container */
+    user-select: none;
+    transition: background-color 0.3s ease;
+}
+
+#svg-layer {
+    position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0;
+}
+
+#forest-container {
+    width: 100vw; height: 100vh;
+    overflow: auto; /* Scrollbars active */
+    position: relative; cursor: grab;
+    -webkit-overflow-scrolling: touch;
+}
+
+#tree-content {
+    /* Huge Canvas Area */
+    min-width: 12000px; 
+    min-height: 8000px;
+    padding: 100px 6000px; /* Padding to center the root initially */
+    
+    display: inline-flex; 
+    justify-content: center;
+    align-items: flex-start;
+    
+    transform-origin: 0 0; /* Crucial for stable zoom */
+    transition: transform 0.1s linear;
+}
+
+/* ==================== 3. TREE STRUCTURE (CSS LINES) ==================== */
+.tree { display: flex; justify-content: center; }
+.tree ul { padding-top: 40px; position: relative; display: flex; justify-content: center; margin:0; padding-left:0; }
+.tree li { float: left; text-align: center; list-style-type: none; position: relative; padding: 20px 5px 0 5px; }
+
+/* Horizontal connector */
+.tree li::before, .tree li::after {
+    content: ''; position: absolute; top: 0; right: 50%;
+    border-top: 2px solid var(--line-color); width: 50%; height: 20px;
+}
+.tree li::after { right: auto; left: 50%; border-left: 2px solid var(--line-color); }
+
+/* Remove connectors from root */
+.tree li:only-child::after, .tree li:only-child::before { display: none; }
+.tree li:only-child { padding-top: 0; }
+
+/* Curve connectors */
+.tree li:first-child::before, .tree li:last-child::after { border: 0 none; }
+.tree li:last-child::before{ border-right: 2px solid var(--line-color); border-radius: 0 5px 0 0; }
+.tree li:first-child::after{ border-radius: 5px 0 0 0; }
+
+/* Vertical line down */
+.tree ul ul::before{
+    content: ''; position: absolute; top: 0; left: 50%;
+    border-left: 2px solid var(--line-color); width: 0; height: 40px; /* height must match padding-top of ul */
+}
+
+/* ==================== 4. CARDS & PERSON STYLING ==================== */
+.card {
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    padding: 8px 10px; border-radius: 12px;
+    display: inline-flex; flex-direction: column; align-items: center;
+    min-width: 140px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    position: relative; z-index: 2;
+    transition: 0.2s;
+}
+
+.partners-row {
+    display: flex; align-items: center; gap: 6px; 
+    justify-content: center; margin-bottom: 5px;
+}
+
+.divider { font-weight: bold; opacity: 0.6; }
+
+/* The Badge */
+.person {
+    padding: 8px 14px; border-radius: 6px;
+    font-weight: 700; font-size: 13px;
+    position: relative; cursor: pointer;
+    border: 2px solid transparent;
+    display: flex; align-items: center; gap: 5px;
+    white-space: nowrap; color: var(--text-color);
+}
+.person.male { background-color: var(--male-bg); border-color: var(--male-border); }
+.person.female { background-color: var(--female-bg); border-color: var(--female-border); }
+
+/* Highlights */
+.person:hover, .person.highlight {
+    background-color: var(--highlight) !important; color: #000;
+    border-color: #f57f17 !important;
+    box-shadow: 0 0 20px rgba(255, 193, 7, 0.8); 
+    transform: scale(1.15); z-index: 50;
+}
+.highlight-trace {
+    background-color: #fff9c4 !important; color: #000;
+    border-color: orange !important;
+}
+
+/* Group Label */
+.group-label {
+    background: var(--group-bg); border: 1px solid var(--group-border);
+    color: #444; font-size: 10px; font-weight: bold;
+    padding: 3px 8px; border-radius: 10px; margin-bottom: 5px;
+    display: inline-block;
+}
+
+/* Action Buttons */
+.btn-row { margin-top: 4px; display: flex; gap: 4px; opacity: 0.6; transition: 0.2s; }
+.card:hover .btn-row { opacity: 1; }
+.btn-mini { border:none; padding:4px 8px; border-radius:4px; font-size:10px; color:white; cursor:pointer;}
+.bg-c { background: #2196f3; } .bg-s { background: #e91e63; }
+
+.action-icons { margin-left: 5px; display: none; }
+.person:hover .action-icons { display: flex; gap:4px; }
+.ico-btn { font-size:11px; cursor: pointer; padding:2px; } 
+.ico-btn:hover { transform: scale(1.3); }
+
+/* ==================== 5. UI DOCK & OVERLAYS ==================== */
+
+/* Top Dock */
+.top-ui-dock {
+    position: fixed; top: 15px; left: 15px; z-index: 2000;
+    background: var(--card-bg); padding: 5px 8px; border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    display: flex; gap: 8px; align-items: center; border: 1px solid var(--card-border);
+}
+.search-wrapper { display: flex; align-items:center; background: var(--bg-color); border-radius: 6px; padding-left: 5px;}
+.search-wrapper input { border:none; background:transparent; width: 140px; padding: 8px; outline:none; color: var(--text-color); }
+.search-wrapper button { border:none; background:transparent; cursor:pointer; padding:6px; font-size:14px;}
+.divider-vertical { width:1px; height:24px; background:var(--line-color); opacity:0.5;}
+.btn-circle { width:32px; height:32px; border-radius:50%; border:1px solid var(--card-border); background: var(--bg-color); color:var(--text-color); cursor:pointer; }
+
+/* Main Title Toolbar */
+.toolbar {
+    position: fixed; top: 15px; left: 50%; transform: translateX(-50%);
+    background: var(--card-bg); padding: 8px 30px; border-radius: 30px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1000; text-align: center;
+    border: 1px solid var(--card-border);
+}
+.toolbar h1 { margin:0; font-size:18px; font-weight:700; color:var(--text-color); }
+.btn-main { background: #4caf50; color: white; border: none; padding: 6px 15px; border-radius: 20px; font-size: 12px; font-weight:bold; cursor:pointer; margin-top:4px;}
+
+/* Zoom Controls (Fixed Left) */
+.zoom-controls {
+    position: fixed; bottom: 80px; left: 20px; 
+    background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2);
+    color: white; border-radius: 12px; width: 45px; 
+    display:flex; flex-direction:column; overflow:hidden; z-index:2000;
+}
+.zoom-controls button { width:100%; height:40px; background:transparent; border:none; color:white; font-size:18px; cursor:pointer; }
+.zoom-controls button:active { background:#555; }
+#zoom-level { font-size:10px; text-align:center; padding:3px; background:rgba(255,255,255,0.1); color:#ccc; }
+
+/* Nav Dock (Bottom) */
+.nav-dock {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: #222; padding: 10px 20px; border-radius: 40px;
+    display:flex; gap:15px; z-index:2000; white-space:nowrap; overflow-x: auto;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.4); max-width: 90vw;
+}
+.nav-dock::-webkit-scrollbar { display:none; }
+.nav-dock button { background:rgba(255,255,255,0.1); border:none; color:white; padding:6px 12px; border-radius:15px; font-size:12px; cursor:pointer; }
+.nav-dock button:hover { background: #4caf50; }
+
+/* Info Panel (Bottom Sheet style) */
+#info-panel {
+    position: fixed; bottom: 20px; right: 20px; width: 280px;
+    background: var(--card-bg); border: 2px solid var(--border-color);
+    border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    z-index: 5000; padding: 20px; display: none; /* JS Toggles this */
+    text-align: left; max-height: 60vh; overflow-y: auto; pointer-events: none;
+}
+/* Allow interaction with content but pass through transparent areas? No, just standard panel. */
+#info-panel { pointer-events: auto; }
+
+.panel-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; margin-bottom: 10px; }
+.panel-header h3 { margin: 0; font-size: 16px; }
+.close-panel { border:none; background:none; font-size:20px; cursor:pointer; color:#888; }
+.bio-text { font-size:13px; font-style:italic; margin:10px 0; background:var(--bg-color); padding:8px; border-left:3px solid #2196f3; }
+.info-row { font-size:13px; margin-bottom:5px; line-height: 1.4; }
+
+/* Modal */
+.modal { display:none; position:fixed; z-index:6000; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; backdrop-filter:blur(3px);}
+.modal-content { background: var(--card-bg); color: var(--text-color); padding: 25px; border-radius:10px; width:300px; display:flex; flex-direction:column; gap:10px; box-shadow:0 10px 40px rgba(0,0,0,0.5); }
+.modal-content input, .modal-content select, .modal-content textarea { padding:8px; border:1px solid #ccc; background:var(--bg-color); color:var(--text-color); border-radius:4px; width:100%; box-sizing:border-box;}
+.input-row { display:flex; gap:10px; } 
+.input-row input { flex:1; }
+.modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:10px;}
+.btn-save { background:#28a745; color:white; padding:8px 16px; border:none; border-radius:4px; cursor:pointer;}
+.btn-cancel { background:#777; color:white; padding:8px 16px; border:none; border-radius:4px; cursor:pointer;}
